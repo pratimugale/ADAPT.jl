@@ -110,6 +110,20 @@ ADAPT.calculate_scores(
     dspv::QAOAObservable,
     reference::ADAPT.QuantumState,
 ) = ADAPT.calculate_scores(ansatz, adapt, pool, dspv.spv, reference)
+ADAPT.calculate_score(
+    ansatz::ADAPT.AbstractAnsatz,
+    adapt::ADAPT.TETRIS_ADAPT.TETRISADAPT,
+    generator::ADAPT.Basics.AnyPauli,
+    dspv::QAOAObservable,
+    reference::ADAPT.QuantumState,
+) = ADAPT.calculate_score(ansatz, adapt, generator, dspv.spv, reference)
+ADAPT.calculate_scores(
+    ansatz::ADAPT.AbstractAnsatz,
+    adapt::ADAPT.TETRIS_ADAPT.TETRISADAPT,
+    pool::ADAPT.Basics.AnyPauli,
+    dspv::QAOAObservable,
+    reference::ADAPT.QuantumState,
+) = ADAPT.calculate_scores(ansatz, adapt, pool, dspv.spv, reference)
 
 # Delegate multiplication (for co-state construction in gradient)
 Base.:*(dspv::QAOAObservable, factor) = dspv.spv * factor

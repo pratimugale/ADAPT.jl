@@ -127,6 +127,9 @@ module ADAPT
 
         include("qaoa/qaoa_pools.jl")
         export QAOApools
+
+        include("qaoa/TetrisQAOA.jl")
+        export TetrisQAOAAnsatz
     end
 
     module Hamiltonians

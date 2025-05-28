@@ -20,7 +20,7 @@ But what should be the sentinel? I don't actually like this.
 
 I'd probably prefer a pure sequence of [G=>F] for just the mixers,
     but with γ_parameters and γ_indices indicating where in the sequence the QAOAObervable should be evolved.
-A single update function layer!() γ0 to γ_parameters and adds length(β_parameters) to γ_indices. Adding this call is the only edit needed in the new adapt! method.
+A single update function insertlayer!() adds γ0 to γ_parameters and adds length(β_parameters) to γ_indices. Adding this call is the only edit needed in the new adapt! method.
 
 But this requires rewriting evolve_state.
 Well that's probably better anyway...
@@ -31,9 +31,10 @@ Well that's probably better anyway...
     TetrisQAOAAnsatz{F<:Parameter,G<:Generator}(
         observable::QAOAObservable,
         γ0::F,
+        γ_values::Vector{F},
+        γ_layers::Vector{Int},
         generators::Vector{G},
-        β_parameters::Vector{F},
-        γ_parameters::Vector{F},
+        parameters::Vector{F},
         optimized::Bool,
         converged::Bool,
     )
@@ -48,9 +49,10 @@ The standard ADAPT generators are interspersed with the observable itself.
 # Parameter
 - `observable`: the observable, which is interspersed with generators when evolving
 - `γ0`: initial coefficient of the observable, whenever a new generator is added
+- `γ_values`: list of current observable coefficients
+- `γ_layers`: list of locations at which to add the observable 
 - `generators`: list of current generators (i.e. mixers)
-- `β_parameters`: list of current generator coefficients
-- `γ_parameters`: list of current observable coefficients
+- `parameters`: list of current generator coefficients
 - `optimized`: whether the current parameters are flagged as optimal
 - `converged`: whether the current generators are flagged as converged
 
@@ -66,8 +68,32 @@ struct TetrisQAOAAnsatz{F,G} <: ADAPT.AbstractAnsatz{F,G}
     converged::Ref{Bool}
 end
 
+"""
+    TetrisQAOAAnsatz(γ0, pool, observable)
+
+Convenience constructor for initializing an empty ansatz.
+
+# Parameters
+- γ0
+- pool
+- observable
+
+Note that the observable must be a `QAOAObservable`.
+
+"""
+TetrisQAOAAnsatz(γ0, pool, observable) = TetrisQAOAAnsatz(
+    observable, 
+    γ0,
+    typeof(γ0)[],
+    Vector{Int}(),
+    eltype(pool)[],
+    typeof(γ0)[],
+    Ref(true), 
+    Ref(false),
+)
+
 function insertlayer!(ansatz::TetrisQAOAAnsatz)
-    push!(ansatz.γ_values, γ0)
+    push!(ansatz.γ_values, ansatz.γ0)
     push!(ansatz.γ_layers, 1+length(ansatz.parameters))
     return ansatz
 end
@@ -103,15 +129,15 @@ function ADAPT.bind!(ansatz::TetrisQAOAAnsatz{F,G}, x::AbstractVector{F}) where 
     return ansatz
 end
 
-function ADAPT.evolve_state!(ansatz::TetrisQAOAAnsatz, state::QuantumState)
+function ADAPT.evolve_state!(ansatz::TetrisQAOAAnsatz, state::ADAPT.QuantumState)
     L = nlayers(ansatz)
-    l = 0
+    l = 1
     for i in eachindex(ansatz.parameters)
         while l ≤ L && ansatz.γ_layers[l] == i
             ADAPT.evolve_state!(ansatz.observable, ansatz.γ_values[l], state)
             l += 1
         end
-        ADAPT.evolve_state!(ansatz.observable, ansatz.γ_values[l], state)
+        ADAPT.evolve_state!(ansatz.generators[i], ansatz.parameters[i], state)
     end
     while l ≤ L # ansatz.γ_layers[l] > max i
         ADAPT.evolve_state!(ansatz.observable, ansatz.γ_values[l], state)
@@ -128,6 +154,8 @@ end
 
 
 ##########################################################################################
+
+AnyPauli = Union{Pauli, ScaledPauli, PauliSum, ScaledPauliVector}
 
 function ADAPT.gradient!(
     result::AbstractVector,
@@ -156,6 +184,9 @@ function ADAPT.gradient!(
 
     =#
 
+    L = nlayers(ansatz)
+    l = L 
+
     ψ = ADAPT.evolve_state(ansatz, reference)   # FULLY EVOLVED ANSATZ |ψ⟩
     λ = observable * ψ                          # CALCULATE |λ⟩ = H |ψ⟩
 
@@ -163,8 +194,16 @@ function ADAPT.gradient!(
         G, θ = ansatz[i]
         ADAPT.evolve_state!(G', -θ, ψ)          # UNEVOLVE BRA
         σ = __make__costate(G, θ, ψ)            # CALCULATE |σ⟩ = exp(-iθG) (-iG) |ψ⟩
-        result[i] = 2 * real(dot(σ, λ))         # CALCULATE GRADIENT ⟨λ|σ⟩ + h.t.
+        result[i+L] = 2 * real(dot(σ, λ))         # CALCULATE GRADIENT ⟨λ|σ⟩ + h.t.
         ADAPT.evolve_state!(G', -θ, λ)          # UNEVOLVE KET
+        if ansatz.γ_layers[l] == i
+            H, θ = (ansatz.observable, ansatz.γ_values[l])
+            ADAPT.evolve_state!(H', -θ, ψ)          # UNEVOLVE BRA
+            σ = __make__costate(H, θ, ψ)            # CALCULATE |σ⟩ = exp(-iθH) (-iH) |ψ⟩
+            result[l] = 2 * real(dot(σ, λ))         # CALCULATE GRADIENT ⟨λ|σ⟩ + h.t.
+            ADAPT.evolve_state!(H', -θ, λ)
+            l -= 1
+        end
     end
 
     return result
@@ -183,6 +222,9 @@ function ADAPT.adapt!(
     reference::ADAPT.QuantumState,
     callbacks::ADAPT.CallbackList,
 )
+    # ADD A NEW LAYER
+    insertlayer!(ansatz)
+
     adapted = invoke(ADAPT.adapt!, Tuple{
         ADAPT.AbstractAnsatz,
         ADAPT.Trace,
@@ -194,8 +236,6 @@ function ADAPT.adapt!(
     }, ansatz, trace, adapt_type, pool, observable, reference, callbacks)
     adapted || return adapted   # STOP IF ADAPTATION IS TERMINATED
 
-    # ADD A NEW LAYER
-    insertlayer!(ansatz)
     return adapted
 end
 
