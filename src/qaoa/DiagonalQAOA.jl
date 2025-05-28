@@ -171,16 +171,3 @@ function ADAPT.calculate_score(
     return abs(ADAPT.Basics.MyPauliOperators.measure_commutator(
             generator, observable, state))
 end
-
-function ADAPT.calculate_score(
-    ansatz::DiagonalQAOAAnsatz,
-    ::ADAPT.TETRIS_ADAPT.TETRISADAPT,
-    generator::AnyPauli,
-    observable::AnyPauli,
-    reference::ADAPT.QuantumState,
-)
-    state = ADAPT.evolve_state(ansatz, reference)
-    ADAPT.evolve_state!(ansatz.observable, ansatz.γ0, state)
-    return abs(ADAPT.Basics.MyPauliOperators.measure_commutator(
-            generator, observable, state))
-end

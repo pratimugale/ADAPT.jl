@@ -171,19 +171,6 @@ function ADAPT.calculate_score(
             generator, observable, state))
 end
 
-function ADAPT.calculate_score(
-    ansatz::QAOAAnsatz,
-    ::ADAPT.TETRIS_ADAPT.TETRISADAPT,
-    generator::AnyPauli,
-    observable::AnyPauli,
-    reference::ADAPT.QuantumState,
-)
-    state = ADAPT.evolve_state(ansatz, reference)
-    ADAPT.evolve_state!(ansatz.observable, ansatz.γ0, state)
-    return abs(ADAPT.Basics.MyPauliOperators.measure_commutator(
-            generator, observable, state))
-end
-
 ##########################################################################################
 #= HACK - Assume that ScaledPauliVector generators appearing in QAOA
             consist only of commuting terms.
