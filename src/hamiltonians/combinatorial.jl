@@ -73,6 +73,8 @@ function maxcut_hamiltonian(V::Int, Edges::Vector{Tuple{Int,Int,T}}) where T<:Re
         push!(H,term)
     end
 
+    unique!(H)
+
     return H
 end
 
