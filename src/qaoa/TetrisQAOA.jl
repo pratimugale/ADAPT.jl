@@ -234,7 +234,12 @@ function ADAPT.adapt!(
         ADAPT.QuantumState,
         ADAPT.CallbackList,
     }, ansatz, trace, adapt_type, pool, observable, reference, callbacks)
-    adapted || return adapted   # STOP IF ADAPTATION IS TERMINATED
+    if !adapted
+        pop!(ansatz.γ_values)
+        pop!(ansatz.γ_layers)
+        return adapted # STOP IF ADAPTATION IS TERMINATED, REMOVE UNNECESSARY LAYER OF H 
+    end
+    # adapted || return adapted   # STOP IF ADAPTATION IS TERMINATED
 
     return adapted
 end
