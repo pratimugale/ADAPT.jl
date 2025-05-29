@@ -5,7 +5,7 @@ import DataFrames
 import Serialization
 import LinearAlgebra: norm
 
-n = 5; gamma0 = 0.1
+n = 6; gamma0 = 0.1
 
 # READ IN HAMILTONIAN
 serialized_H = "adaptqaoa_Hamiltonian_n_"*string(n)*"_gamma0_"*string(gamma0)
@@ -24,9 +24,6 @@ csv = CSV.File(results_file); my_df = DataFrames.DataFrame(csv)
 
 # BUILD OUT THE OPERATOR POOL
 # pooltype = my_df[!,:pooltype][1]; println(pooltype) 
-# if pooltype=="qaoa_double_pool" 
-    
-# end
 pool = ADAPT.ADAPT_QAOA.QAOApools.qaoa_double_pool(n)
 
 # INITIALIZE THE ANSATZ 
@@ -39,8 +36,8 @@ for row in eachrow(my_df)
     push!(ansatz.γ_layers, 1+length(ansatz.parameters))
 
     @assert row.:selected_index[1] == '[' && row.:selected_index[end] == ']'
-    indices = [parse(Int, d) for d in split(strip(row.:selected_index, ['[', ']']), ",")]
-    for index in indices
+    selected_indices = [parse(Int, d) for d in split(strip(row.:selected_index, ['[', ']']), ",")]
+    for index in selected_indices
         push!(ansatz.generators, pool[index])
     end
 
@@ -53,3 +50,8 @@ end #= <- this is your reconstructed ansatz =#
 ψEND = ADAPT.evolve_state(ansatz, ψ0)
 E_final = ADAPT.evaluate(H, ψEND)
 println("final energy = $E_final")
+
+imode = argmax(abs2.(ψEND))                # MOST LIKELY INDEX
+zmode = imode-1                         # MOST LIKELY BITSTRING (as int)
+final_maxcut = bitstring(zmode)[end-n+1:end]
+println("Most likely bitstring: ",final_maxcut)

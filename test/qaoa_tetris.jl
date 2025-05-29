@@ -34,7 +34,7 @@ function (tracer::ModalSampleTracer)(
 end
 
 # DEFINE A GRAPH
-n = 5
+n = 6
 
 # EXAMPLE OF ERDOS-RENYI GRAPH
 prob = 0.5; g = Graphs.erdos_renyi(n, prob)
@@ -116,6 +116,7 @@ results_df = DataFrames.DataFrame()
 if success
     # SAVE THE TRACE
     indices = [ansatz.γ_layers[i]:(ansatz.γ_layers[i+1]-1) for i in eachindex(ansatz.γ_layers)[1:end-1]]
+    push!(indices, ansatz.γ_layers[end]:length(ansatz.parameters))
     parameters = [ansatz.parameters[i] for i in indices]
 
     # :γ_coeff => the γ coefficients (for the observable)
@@ -125,13 +126,11 @@ if success
     # :bitstring => Most likely bitstrings after each adaption
 
     df = DataFrames.DataFrame(#:pooltype => poolstr,
-            :gamma_coeff => ansatz.γ_values[1:end-1],
+            :gamma_coeff => ansatz.γ_values,
             :selected_index => trace[:selected_index][1:end-1], 
             :beta_coeff => parameters,
             :energy => trace[:energy][trace[:adaptation][2:end]],
             :bitstring => [string(el[end-n+1:end]) for el in bitstring.(trace[:modalsample][1:end-1])])
-
-    println(df)
 
     # WRITE THE ADAPT-QAOA RESULTS TO A FILE
     H_asdict = Dict(string(sp.pauli) => sp.coeff for sp in H.spv)
