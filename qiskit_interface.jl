@@ -69,7 +69,7 @@ module QiskitInterface
                 evo = PauliEvolutionGate(operator, time=-1.0) # build the evolution gate
                 ''' Note: the negative sign here in the time parameter 
                 is due to a difference in sign conventions between qiskit and ADAPT.jl.
-                In ADAPT.jl, we write the unitary evolution as exp(-iθG), whereas in qiskit it is exp(-iθG).'''
+                In ADAPT.jl, we write the unitary evolution as exp(-iθG), whereas in qiskit it is exp(+iθG).'''
                 circuit.append(evo, range(n)) # plug it into a circuit
             # print(circuit.draw())
 
