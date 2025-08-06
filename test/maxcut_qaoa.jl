@@ -77,3 +77,18 @@ callbacks = [
 # RUN THE ALGORITHM
 success = ADAPT.run!(ansatz, trace, adapt, vqe, pool, H, ψ0, callbacks)
 println(success ? "Success!" : "Failure - optimization didn't converge.")
+
+# VALIDATE ENERGY IN QISKIT
+ψEND = ADAPT.evolve_state(ansatz, ψ0)
+
+include("../qiskit_interface.jl")
+
+energy_q = QiskitInterface.validate_energy(H, ansatz, ψ0, n)
+println("Energy estimated in qiskit of ψEND = ", energy_q[1])
+
+E0 = ADAPT.evaluate(H, ψEND)
+println("Energy estimated in ADAPT of ψEND = ",E0)
+
+# ψEND_rev = QiskitInterface.revert_endianness(ψEND)
+# E0_r = ADAPT.evaluate(H, ψEND_rev)
+# println("Energy estimated in ADAPT of endianness-reverted ψEND = ",E0_r)
