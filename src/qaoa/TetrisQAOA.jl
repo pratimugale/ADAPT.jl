@@ -254,3 +254,29 @@ function ADAPT.calculate_score(
     return abs(ADAPT.Basics.MyPauliOperators.measure_commutator(
             generator, observable, state))
 end
+
+function ADAPT.calculate_scores(
+    ansatz::TetrisQAOAAnsatz,
+    adapt_type::ADAPT.TETRIS_ADAPT.TETRISADAPT,
+    pool::ADAPT.GeneratorList,
+    observable::AnyPauli,
+    reference::ADAPT.QuantumState,
+)
+    using Base.Threads
+    
+    # Compute state ONCE (shared across all operators)
+    println("Evolving the state")
+    # Evolve the state with the previously found ansatz and observable
+    state = ADAPT.evolve_state(ansatz, reference)
+    # We are going to add another layer. so we need to add a problem hamlitonian layer with the initial gamma value
+    ADAPT.evolve_state!(ansatz.observable, ansatz.γ0, state) # TODO: is this a good way of coding this?
+    
+    println("Computing the scores in multiple threads")
+    # Parallelize the commutator measurements
+    scores = Vector{Float64}(undef, length(pool))
+    @threads for i in eachindex(pool)
+        scores[i] = abs(ADAPT.Basics.MyPauliOperators.measure_commutator(
+            pool[i], observable, state))
+    end
+    return scores
+end
