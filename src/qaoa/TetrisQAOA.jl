@@ -1,5 +1,6 @@
 import ..ADAPT
 import PauliOperators: ScaledPauliVector
+import Base.Threads: @threads
 
 #=
 
@@ -262,8 +263,6 @@ function ADAPT.calculate_scores(
     observable::AnyPauli,
     reference::ADAPT.QuantumState,
 )
-    using Base.Threads
-    
     # Compute state ONCE (shared across all operators)
     println("Evolving the state")
     # Evolve the state with the previously found ansatz and observable
