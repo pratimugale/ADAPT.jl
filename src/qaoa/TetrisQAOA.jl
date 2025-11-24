@@ -256,6 +256,17 @@ function ADAPT.calculate_score(
             generator, observable, state))
 end
 
+# Method to handle QAOAObservable - converts to ScaledPauliVector and calls the AnyPauli version
+function ADAPT.calculate_scores(
+    ansatz::TetrisQAOAAnsatz,
+    adapt_type::ADAPT.TETRIS_ADAPT.TETRISADAPT,
+    pool::ADAPT.GeneratorList,
+    observable::ADAPT.ADAPT_QAOA.QAOAObservable,
+    reference::ADAPT.QuantumState,
+)
+    return ADAPT.calculate_scores(ansatz, adapt_type, pool, observable.spv, reference)
+end
+
 function ADAPT.calculate_scores(
     ansatz::TetrisQAOAAnsatz,
     adapt_type::ADAPT.TETRIS_ADAPT.TETRISADAPT,

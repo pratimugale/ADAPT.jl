@@ -33,6 +33,7 @@ function ADAPT.adapt!(
     reference::ADAPT.QuantumState,
     callbacks::ADAPT.CallbackList,
 )
+    println("TETRIS.adapt! called - Number of pool operators: $(length(pool))")
     # CALCULATE SCORES
     scores = ADAPT.calculate_scores(ansatz, adapt_type, pool, observable, reference)
 
