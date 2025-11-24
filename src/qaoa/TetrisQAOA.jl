@@ -285,8 +285,10 @@ function ADAPT.calculate_scores(
     # Parallelize the commutator measurements
     scores = Vector{Float64}(undef, length(pool))
     @threads for i in eachindex(pool)
+        thread_id = Threads.threadid()
         scores[i] = abs(ADAPT.Basics.MyPauliOperators.measure_commutator(
             pool[i], observable, state))
+        println("Thread $thread_id: computed score $i of $(length(pool)): $(scores[i])")
     end
     return scores
 end
