@@ -24,6 +24,21 @@ function support(spv::ScaledPauliVector)
     return indices
 end
 
+function get_pauli_type(spv::ScaledPauliVector)
+    # Get the Pauli string representation (e.g., "XX", "YY", "ZZ", "XY", etc.)
+    # For ScaledPauliVector, we combine all Pauli terms
+    pauli_strings = String[]
+    for sp in spv
+        pauli_str = string(sp.pauli)
+        # Remove 'I' characters and get only the non-identity Paulis
+        non_identity = filter(c -> c != 'I', pauli_str)
+        if !isempty(non_identity)
+            push!(pauli_strings, non_identity)
+        end
+    end
+    return join(pauli_strings, " + ")  # If multiple terms, join them
+end
+
 function ADAPT.adapt!(
     ansatz::ADAPT.AbstractAnsatz,
     trace::ADAPT.Trace,
@@ -56,10 +71,12 @@ function ADAPT.adapt!(
         largest_score, G = findmax(candidates)
         G_support = support(G)
         
-        # Print the selected operator's support
-        println("Selected operator with score $(largest_score): affects qubits $(sort(collect(G_support)))")
+        # Print the selected operator's support and type
+        G_pauli_type = get_pauli_type(G)
+        println("Selected operator with score $(largest_score): type $(G_pauli_type), affects qubits $(sort(collect(G_support)))")
         
         # Check for candidates within 1% of the largest score
+        # Note: p.first != G ensures we don't consider the selected operator again
         threshold_1percent = 0.99 * largest_score
         near_candidates = filter(p -> p.second >= threshold_1percent && p.first != G, candidates)
         
@@ -67,7 +84,10 @@ function ADAPT.adapt!(
             println("Found $(length(near_candidates)) operator(s) within 1% of largest score ($(largest_score)):")
             for (op, score) in near_candidates
                 op_support = support(op)
-                println("  - Operator with score $(score): affects qubits $(sort(collect(op_support)))")
+                op_pauli_type = get_pauli_type(op)
+                overlap = intersect(G_support, op_support)
+                overlap_str = isempty(overlap) ? " (disjoint)" : " (overlaps on qubits $(sort(collect(overlap))))"
+                println("  - Operator with score $(score): type $(op_pauli_type), affects qubits $(sort(collect(op_support)))$overlap_str")
             end
         else
             println("No operators within 1% of largest score ($(largest_score))")
