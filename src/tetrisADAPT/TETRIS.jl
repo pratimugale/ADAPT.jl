@@ -81,6 +81,33 @@ function ADAPT.adapt!(
     selected_scores = scores[selected_indices];
     selected_generators = pool[selected_indices];
     selected_parameters = zeros(ADAPT.typeof_parameter(ansatz), length(ops_to_add));
+    
+    # Calculate density and sum of gradients for selected operators
+    if !isempty(selected_generators)
+        # Get union of all qubits affected by selected operators
+        all_affected_qubits = Set{Int64}()
+        for gen in selected_generators
+            union!(all_affected_qubits, support(gen))
+        end
+        
+        # Get total number of qubits from any operator in the pool
+        # ScaledPauliVector{N} where N is the number of qubits
+        # We can get it from the string representation of a Pauli operator
+        total_qubits = length(string(pool[1][1].pauli))  # Pauli string length = number of qubits
+        
+        # Calculate density
+        density = length(all_affected_qubits) / total_qubits
+        
+        # Sum of gradients
+        sum_gradients = sum(selected_scores)
+        
+        println("Selected operators analysis:")
+        println("  - Number of operators selected: $(length(selected_generators))")
+        println("  - Total qubits affected: $(length(all_affected_qubits)) out of $(total_qubits)")
+        println("  - Density: $(round(density, digits=4)) ($(round(100*density, digits=2))%)")
+        println("  - Sum of gradients: $(sum_gradients)")
+        println("  - Affected qubits: $(sort(collect(all_affected_qubits)))")
+    end
 
     # DEFER TO CALLBACKS
     data = ADAPT.Data(
