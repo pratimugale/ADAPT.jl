@@ -55,6 +55,24 @@ function ADAPT.adapt!(
     while !isempty(candidates)
         largest_score, G = findmax(candidates)
         G_support = support(G)
+        
+        # Print the selected operator's support
+        println("Selected operator with score $(largest_score): affects qubits $(sort(collect(G_support)))")
+        
+        # Check for candidates within 1% of the largest score
+        threshold_1percent = 0.99 * largest_score
+        near_candidates = filter(p -> p.second >= threshold_1percent && p.first != G, candidates)
+        
+        if !isempty(near_candidates)
+            println("Found $(length(near_candidates)) operator(s) within 1% of largest score ($(largest_score)):")
+            for (op, score) in near_candidates
+                op_support = support(op)
+                println("  - Operator with score $(score): affects qubits $(sort(collect(op_support)))")
+            end
+        else
+            println("No operators within 1% of largest score ($(largest_score))")
+        end
+        
         filter!(p-> isdisjoint(support(p.first), G_support), candidates)
         push!(ops_to_add, imap[G])
     end
