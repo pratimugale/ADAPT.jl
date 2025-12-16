@@ -537,6 +537,7 @@ module Callbacks
     )
         if length(ansatz) ≥ stopper.n
             ADAPT.set_converged!(ansatz, true)
+            println("Algorithm terminated: Number of parameters ($(length(ansatz))) reached maximum ($(stopper.n))")
         end
         return false
     end
@@ -562,8 +563,10 @@ module Callbacks
         data::Data, ansatz::AbstractAnsatz, ::Trace,
         ::AdaptProtocol, ::GeneratorList, ::Observable, ::QuantumState,
     )
-        if maximum(abs.(data[:scores])) < stopper.threshold
+        max_score = maximum(abs.(data[:scores]))
+        if max_score < stopper.threshold
             ADAPT.set_converged!(ansatz, true)
+            println("Algorithm terminated: Maximum score ($(max_score)) below threshold ($(stopper.threshold))")
         end
         return false
     end
@@ -606,6 +609,7 @@ module Callbacks
         energy_range = maximum(last_n_energies) - minimum(last_n_energies)
         if energy_range < stopper.threshold
             ADAPT.set_converged!(ansatz, true)
+            println("Algorithm terminated: Energy improvement below threshold (range: $(energy_range) < $(stopper.threshold))")
         end
 
         return false

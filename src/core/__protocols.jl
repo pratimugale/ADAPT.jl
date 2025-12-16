@@ -523,13 +523,26 @@ function run!(
     reference::QuantumState,
     callbacks::CallbackList,
 )
-    is_converged(ansatz) && return true
+    if is_converged(ansatz)
+        println("Algorithm terminated: Ansatz already converged")
+        return true
+    end
 
     is_optimized(ansatz) || optimize!(ansatz,trace, VQE, observable,reference, callbacks)
-    is_optimized(ansatz) || return false
+    if !is_optimized(ansatz)
+        println("Algorithm terminated: Optimization failed")
+        return false
+    end
 
     adapted = adapt!(ansatz, trace, ADAPT, pool, observable, reference, callbacks)
-    adapted || return is_converged(ansatz)
+    if !adapted
+        if is_converged(ansatz)
+            println("Algorithm terminated: No adaptation made (converged)")
+        else
+            println("Algorithm terminated: No adaptation made")
+        end
+        return is_converged(ansatz)
+    end
 
     return run!(ansatz, trace, ADAPT, VQE, pool, observable, reference, callbacks)
 end

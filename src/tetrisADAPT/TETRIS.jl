@@ -8,10 +8,20 @@ Score pool operators by their initial gradients if they were to be appended to t
 TETRIS-ADAPT is a modified version of ADAPT-VQE in which multiple operators with disjoint 
 support are added to the ansatz at each iteration. They are chosen by selecting from 
 operators ordered in decreasing magnitude of gradients.
+
+If use_kamis is true, uses KaMIS mmwis algorithm for maximum weight independent set selection.
+Otherwise, uses the original greedy selection method.
 """
 struct TETRISADAPT{F} <: ADAPT.AdaptProtocol 
     gradient_threshold::F
+    use_kamis::Bool
+    kamis_path::String
+    kamis_seed::Int
 end
+
+# Constructor with default values
+TETRISADAPT(gradient_threshold::F; use_kamis::Bool=false, kamis_path::String="", kamis_seed::Int=0) where F = 
+    TETRISADAPT{F}(gradient_threshold, use_kamis, kamis_path, kamis_seed)
 
 ADAPT.typeof_score(::TETRISADAPT) = Float64
 
@@ -156,81 +166,94 @@ function ADAPT.adapt!(
     ε = eps(ADAPT.typeof_score(adapt_type))
     if all(score -> abs(score) < ε, scores)
         ADAPT.set_converged!(ansatz, true)
+        println("Algorithm terminated: All operator scores below machine epsilon (converged)")
         return false
     end
 
     # MAKE SELECTION
-    candidates = Dict(pool .=> scores)
-    imap = Dict(pool .=> eachindex(pool))
-    ops_to_add = Int64[]
+    if adapt_type.use_kamis
+        # Use KaMIS mmwis for maximum weight independent set selection
+        println("Using KaMIS mmwis for operator selection")
+        selected_indices, selected_generators, selected_scores = 
+            select_operators_with_kamis(pool, scores, adapt_type.gradient_threshold;
+                                        kamis_path=adapt_type.kamis_path,
+                                        seed=adapt_type.kamis_seed)
+        selected_parameters = zeros(ADAPT.typeof_parameter(ansatz), length(selected_indices))
+    else
+        # Original greedy selection method
+        candidates = Dict(pool .=> scores)
+        imap = Dict(pool .=> eachindex(pool))
+        ops_to_add = Int64[]
 
-    # remove candidate operators with scores below some threshold
-    filter!(p-> p.second >= adapt_type.gradient_threshold, candidates)
+        # remove candidate operators with scores below some threshold
+        filter!(p-> p.second >= adapt_type.gradient_threshold, candidates)
 
-    # Get number of qubits from the pool
-    n = length(string(pool[1][1].pauli))
+        # Get number of qubits from the pool
+        n = length(string(pool[1][1].pauli))
 
-    while !isempty(candidates)
-        largest_score, G = findmax(candidates)
-        G_support = support(G)
-        
-        # Print the selected operator directly and its support
-        println("Selected operator with score $(largest_score): $G")
-        println("  Affects qubits: $(sort(collect(G_support)))")
-        
-        # Check for candidates within 1% of the largest score
-        # Note: p.first != G ensures we don't consider the selected operator again
-        threshold_1percent = 0.99 * largest_score
-        near_candidates = filter(p -> p.second >= threshold_1percent && p.first != G, candidates)
-        
-        if !isempty(near_candidates)
-            println("Found $(length(near_candidates)) operator(s) within 1% of largest score ($(largest_score)):")
-            for (op, score) in near_candidates
-                op_support = support(op)
-                overlap = intersect(G_support, op_support)
-                overlap_str = isempty(overlap) ? " (disjoint)" : " (overlaps on qubits $(sort(collect(overlap))))"
-                println("  - Operator with score $(score): $op, affects qubits $(sort(collect(op_support)))$overlap_str")
-            end
-        else
-            println("No operators within 1% of largest score ($(largest_score))")
-        end
-        
-        # Check if G is mixer or single X - if yes, use G as normal
-        # Otherwise, check for alternative operators
-        operators_to_add_this_iteration = [G]
-        
-        if !is_mixer_operator(G, n) && !is_single_x_operator(G)
-            # Try to find alternative operators
-            found_alternatives, alternative_ops = find_alternative_operators(G, G_support, near_candidates)
+        while !isempty(candidates)
+            largest_score, G = findmax(candidates)
+            G_support = support(G)
             
-            if found_alternatives
-                # Use alternative operators instead of G
-                operators_to_add_this_iteration = alternative_ops
-                println("Using alternative operators instead of the original selection")
-                # Remove G from candidates since we're not using it
-                delete!(candidates, G)
+            # Print the selected operator directly and its support
+            println("Selected operator with score $(largest_score): $G")
+            println("  Affects qubits: $(sort(collect(G_support)))")
+            
+            # Check for candidates within 1% of the largest score
+            # Note: p.first != G ensures we don't consider the selected operator again
+            threshold_1percent = 0.99 * largest_score
+            near_candidates = filter(p -> p.second >= threshold_1percent && p.first != G, candidates)
+            
+            if !isempty(near_candidates)
+                println("Found $(length(near_candidates)) operator(s) within 1% of largest score ($(largest_score)):")
+                for (op, score) in near_candidates
+                    op_support = support(op)
+                    overlap = intersect(G_support, op_support)
+                    overlap_str = isempty(overlap) ? " (disjoint)" : " (overlaps on qubits $(sort(collect(overlap))))"
+                    println("  - Operator with score $(score): $op, affects qubits $(sort(collect(op_support)))$overlap_str")
+                end
+            else
+                println("No operators within 1% of largest score ($(largest_score))")
             end
-        else
-            println("Operator is mixer or single X - using standard selection")
+            
+            # Check if G is mixer or single X - if yes, use G as normal
+            # Otherwise, check for alternative operators
+            operators_to_add_this_iteration = [G]
+            
+            if !is_mixer_operator(G, n) && !is_single_x_operator(G)
+                # Try to find alternative operators
+                found_alternatives, alternative_ops = find_alternative_operators(G, G_support, near_candidates)
+                
+                if found_alternatives
+                    # Use alternative operators instead of G
+                    operators_to_add_this_iteration = alternative_ops
+                    println("Using alternative operators instead of the original selection")
+                    # Remove G from candidates since we're not using it
+                    delete!(candidates, G)
+                end
+            else
+                println("Operator is mixer or single X - using standard selection")
+            end
+            
+            # Remove all selected operators and overlapping operators from candidates
+            for op in operators_to_add_this_iteration
+                op_support = support(op)
+                # Remove the operator itself from candidates
+                delete!(candidates, op)
+                # Remove all operators that overlap with this operator
+                filter!(p-> isdisjoint(support(p.first), op_support), candidates)
+                push!(ops_to_add, imap[op])
+            end
         end
-        
-        # Remove all selected operators and overlapping operators from candidates
-        for op in operators_to_add_this_iteration
-            op_support = support(op)
-            # Remove the operator itself from candidates
-            delete!(candidates, op)
-            # Remove all operators that overlap with this operator
-            filter!(p-> isdisjoint(support(p.first), op_support), candidates)
-            push!(ops_to_add, imap[op])
-        end
-    end
 
-    selected_indices = ops_to_add
-    selected_scores = scores[selected_indices];
-    selected_generators = pool[selected_indices];
-    selected_parameters = zeros(ADAPT.typeof_parameter(ansatz), length(ops_to_add));
+        selected_indices = ops_to_add
+        selected_scores = scores[selected_indices];
+        selected_generators = pool[selected_indices];
+        selected_parameters = zeros(ADAPT.typeof_parameter(ansatz), length(ops_to_add));
+    end
     
     # Calculate density and sum of gradients for selected operators
+    sum_gradients = 0.0
     if !isempty(selected_generators)
         # Get union of all qubits affected by selected operators
         all_affected_qubits = Set{Int64}()
@@ -265,19 +288,31 @@ function ADAPT.adapt!(
         :selected_generator => selected_generators,
         :selected_parameter => selected_parameters,
     )
+    
+    # Add sum of gradients if available
+    if sum_gradients > 0.0
+        data[:sum_gradients] = sum_gradients
+    end
 
     stop = false
     for callback in callbacks
         stop = stop || callback(data, ansatz, trace, adapt_type, pool, observable, reference)
         # Note that, as soon as `stop` is true, subsequent callbacks are short-circuited.
     end
-    (stop || ADAPT.is_converged(ansatz)) && return false
+    if stop || ADAPT.is_converged(ansatz)
+        if stop
+            println("Algorithm terminated: Callback requested termination")
+        else
+            println("Algorithm terminated: Ansatz marked as converged")
+        end
+        return false
+    end
 
     # PERFORM ADAPTATION
     for i in range(1,length(selected_generators))
         push!(ansatz, selected_generators[i] => selected_parameters[i])
     end
-    ADAPT.set_optimized!(ansatz, false)
+    ADAPT.set_optimized!(ansatz, false) # because we want to optimize all the parameters again after adding the new operators 
     return true
 end
 

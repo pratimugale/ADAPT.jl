@@ -1,6 +1,6 @@
 import ..ADAPT
 import PauliOperators: ScaledPauliVector
-import Base.Threads: @threads
+using Base.Threads
 
 #=
 
@@ -213,7 +213,8 @@ end
 ##########################################################################################
 
 #= Make compatible with TETRIS protocol. =#
-
+# This function does what we need to do with respect to QAOA for Tetris ADAPT. (handles addition of γ parameters)
+# The invoke call runs the tetris logic for the mixers ie the β parameters
 function ADAPT.adapt!(
     ansatz::TetrisQAOAAnsatz,
     trace::ADAPT.Trace,
@@ -223,7 +224,7 @@ function ADAPT.adapt!(
     reference::ADAPT.QuantumState,
     callbacks::ADAPT.CallbackList,
 )
-    p_current = length(ansatz.parameters)
+    p_current = length(ansatz.parameters) # ansatz.parameters is the list of β parameters
 
     adapted = invoke(ADAPT.adapt!, Tuple{
         ADAPT.AbstractAnsatz,
@@ -256,17 +257,6 @@ function ADAPT.calculate_score(
             generator, observable, state))
 end
 
-# Method to handle QAOAObservable - converts to ScaledPauliVector and calls the AnyPauli version
-function ADAPT.calculate_scores(
-    ansatz::TetrisQAOAAnsatz,
-    adapt_type::ADAPT.TETRIS_ADAPT.TETRISADAPT,
-    pool::ADAPT.GeneratorList,
-    observable::ADAPT.ADAPT_QAOA.QAOAObservable,
-    reference::ADAPT.QuantumState,
-)
-    return ADAPT.calculate_scores(ansatz, adapt_type, pool, observable.spv, reference)
-end
-
 function ADAPT.calculate_scores(
     ansatz::TetrisQAOAAnsatz,
     adapt_type::ADAPT.TETRIS_ADAPT.TETRISADAPT,
@@ -285,10 +275,8 @@ function ADAPT.calculate_scores(
     # Parallelize the commutator measurements
     scores = Vector{Float64}(undef, length(pool))
     @threads for i in eachindex(pool)
-        thread_id = Threads.threadid()
         scores[i] = abs(ADAPT.Basics.MyPauliOperators.measure_commutator(
             pool[i], observable, state))
-        println("Thread $thread_id: computed score $i of $(length(pool)): $(scores[i])")
     end
     return scores
 end

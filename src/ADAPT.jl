@@ -107,6 +107,7 @@ module ADAPT
 
     module TETRIS_ADAPT
         include("tetrisADAPT/TETRIS.jl")
+        include("tetrisADAPT/kamis_integration.jl")
         export TETRISADAPT
     end
 
