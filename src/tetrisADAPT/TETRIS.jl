@@ -98,56 +98,6 @@ function is_single_x_operator(op::ScaledPauliVector)
     return length(x_positions) == 1
 end
 
-"""
-    find_alternative_operators(G, G_support, near_candidates)
-
-Find alternative operators that follow the pattern:
-- If G affects [a, b], look for operators affecting [a, c] and [b, d] that are disjoint.
-- Returns (found, alternative_ops) where found is Bool and alternative_ops is a vector of operators.
-"""
-function find_alternative_operators(G, G_support, near_candidates)
-    G_support_list = sort(collect(G_support))
-    
-    # Only apply this logic for two-qubit operators
-    if length(G_support_list) != 2
-        return (false, [])
-    end
-    
-    a, b = G_support_list[1], G_support_list[2]
-    
-    # Find operators that overlap with exactly one qubit from G
-    candidates_overlapping_a = []
-    candidates_overlapping_b = []
-    
-    for (op, score) in near_candidates
-        op_support = support(op)
-        overlap = intersect(G_support, op_support)
-        
-        # Must overlap with exactly one qubit from G
-        if length(overlap) == 1
-            if a in overlap
-                push!(candidates_overlapping_a, (op, score))
-            elseif b in overlap
-                push!(candidates_overlapping_b, (op, score))
-            end
-        end
-    end
-    
-    # Try to find a pair: one overlapping with a, one overlapping with b, and they are disjoint
-    for (op1, score1) in candidates_overlapping_a
-        op1_support = support(op1)
-        for (op2, score2) in candidates_overlapping_b
-            op2_support = support(op2)
-            # Check if op1 and op2 are disjoint
-            if isdisjoint(op1_support, op2_support)
-                println("Found alternative pattern: replacing operator on [$a, $b] with operators on $(sort(collect(op1_support))) and $(sort(collect(op2_support)))")
-                return (true, [op1, op2])
-            end
-        end
-    end
-    
-    return (false, [])
-end
 
 function ADAPT.adapt!(
     ansatz::ADAPT.AbstractAnsatz,
@@ -188,62 +138,11 @@ function ADAPT.adapt!(
         # remove candidate operators with scores below some threshold
         filter!(p-> p.second >= adapt_type.gradient_threshold, candidates)
 
-        # Get number of qubits from the pool
-        n = length(string(pool[1][1].pauli))
-
         while !isempty(candidates)
             largest_score, G = findmax(candidates)
             G_support = support(G)
-            
-            # Print the selected operator directly and its support
-            println("Selected operator with score $(largest_score): $G")
-            println("  Affects qubits: $(sort(collect(G_support)))")
-            
-            # Check for candidates within 1% of the largest score
-            # Note: p.first != G ensures we don't consider the selected operator again
-            threshold_1percent = 0.99 * largest_score
-            near_candidates = filter(p -> p.second >= threshold_1percent && p.first != G, candidates)
-            
-            if !isempty(near_candidates)
-                println("Found $(length(near_candidates)) operator(s) within 1% of largest score ($(largest_score)):")
-                for (op, score) in near_candidates
-                    op_support = support(op)
-                    overlap = intersect(G_support, op_support)
-                    overlap_str = isempty(overlap) ? " (disjoint)" : " (overlaps on qubits $(sort(collect(overlap))))"
-                    println("  - Operator with score $(score): $op, affects qubits $(sort(collect(op_support)))$overlap_str")
-                end
-            else
-                println("No operators within 1% of largest score ($(largest_score))")
-            end
-            
-            # Check if G is mixer or single X - if yes, use G as normal
-            # Otherwise, check for alternative operators
-            operators_to_add_this_iteration = [G]
-            
-            if !is_mixer_operator(G, n) && !is_single_x_operator(G)
-                # Try to find alternative operators
-                found_alternatives, alternative_ops = find_alternative_operators(G, G_support, near_candidates)
-                
-                if found_alternatives
-                    # Use alternative operators instead of G
-                    operators_to_add_this_iteration = alternative_ops
-                    println("Using alternative operators instead of the original selection")
-                    # Remove G from candidates since we're not using it
-                    delete!(candidates, G)
-                end
-            else
-                println("Operator is mixer or single X - using standard selection")
-            end
-            
-            # Remove all selected operators and overlapping operators from candidates
-            for op in operators_to_add_this_iteration
-                op_support = support(op)
-                # Remove the operator itself from candidates
-                delete!(candidates, op)
-                # Remove all operators that overlap with this operator
-                filter!(p-> isdisjoint(support(p.first), op_support), candidates)
-                push!(ops_to_add, imap[op])
-            end
+            filter!(p-> isdisjoint(support(p.first), G_support), candidates)
+            push!(ops_to_add, imap[G])
         end
 
         selected_indices = ops_to_add
