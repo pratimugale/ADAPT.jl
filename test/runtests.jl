@@ -82,7 +82,9 @@ end
 ##########################################################################################
 #= VALIDATE SELECT COMBINATIONS =#
 
-@testset "ADAPT.jl" begin
+@testset "ADAPT.jl" verbose=true begin
+    #= Run tests from other files =#
+    include("max3sat_exact_hamiltonian.jl")
     @testset "Basics" begin
         ADAPT.validate(
             ADAPT.Ansatz(Float64, pools[:ScaledPauliVector]),

@@ -140,6 +140,12 @@ module ADAPT
 
         # Methods to generate MaxCut Hamiltonians
         include("hamiltonians/maxcut.jl")
+
+        # Max-3-SAT Hamiltonians (types + exact/approx functions)
+        include("hamiltonians/max3sat.jl")
+        using .Max3SAT
+        export Max3SAT
+
         export MaxCut
     end
 end

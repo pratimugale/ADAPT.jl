@@ -18,3 +18,6 @@ smoke:
 clean:
 	@echo "Removing Julia artifacts..."
 	rm -rf ~/.julia/compiled/v1.*/TetrisADAPT
+
+test:
+	$(JULIA) --project=. -e 'using Pkg; Pkg.test()'
