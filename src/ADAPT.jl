@@ -31,6 +31,7 @@ module ADAPT
     export evolve_state, evolve_state!
     export evaluate, partial, gradient, gradient!
     export make_costfunction, make_gradfunction, make_gradfunction!
+    export sample_from_state
 
     # Define functions for dense matrix representations.
     include("core/__matrix_functions.jl")
