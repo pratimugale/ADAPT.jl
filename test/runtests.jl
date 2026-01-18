@@ -85,6 +85,8 @@ end
 @testset "ADAPT.jl" verbose=true begin
     #= Run tests from other files =#
     include("max3sat_exact_hamiltonian.jl")
+    include("max3sat_approx_hamiltonian.jl")
+    
     @testset "Basics" begin
         ADAPT.validate(
             ADAPT.Ansatz(Float64, pools[:ScaledPauliVector]),
