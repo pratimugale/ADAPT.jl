@@ -13,3 +13,10 @@ This repository is a library that contains the implementation of the optimized T
 
 ## TODO:
 1. Unskip docs step in CI
+
+## Steps:
+
+1. `make install`
+2. `make install-kamis`
+3. `make smoke`
+4. `make smoke-kamis`

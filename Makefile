@@ -1,7 +1,7 @@
 # Variables
 JULIA = julia
 
-.PHONY: all install test clean
+.PHONY: all install test clean smoke smoke-kamis install-kamis clean-kamis
 
 all: install
 
@@ -21,3 +21,20 @@ clean:
 
 test:
 	$(JULIA) --project=. -e 'using Pkg; Pkg.test()'
+
+install-kamis:
+	@echo "Installing KaMIS..."
+	@mkdir -p external
+	git clone https://github.com/pratimugale/KaMIS.git external/KaMIS
+	cd external/KaMIS && git submodule update --init --recursive
+	@echo "KaMIS repo cloned!"
+	@echo "To compile KaMIS, run: cd external/KaMIS && ./compile_withcmake.sh"
+	@echo "If using MacOS, you may need to edit the compile_withcmake.sh script to use the correct compiler. Please refer to external/KaMIS/HowToMacOs.md for instructions."
+	@echo "To clean KaMIS, run: rm -rf external/KaMIS"
+
+clean-kamis:
+	rm -rf external/KaMIS
+
+smoke-kamis:
+	@echo "Running KaMIS mmwis smoke test..."
+	$(JULIA) --project=. test/kamis_smoke_test.jl
