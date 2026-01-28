@@ -7,6 +7,7 @@ const Literal = ADAPT.Hamiltonians.Max3SAT.Types.Literal
 const Clause = ADAPT.Hamiltonians.Max3SAT.Types.Clause
 const Formula = ADAPT.Hamiltonians.Max3SAT.Types.Formula
 const get_approximate_hamiltonian = ADAPT.Hamiltonians.Max3SAT.get_approximate_hamiltonian
+const get_exact_hamiltonian = ADAPT.Hamiltonians.Max3SAT.get_exact_hamiltonian
 
 @testset "Max3SAT Bit Flip Symmetry" begin
     Random.seed!(1234)
@@ -58,5 +59,13 @@ const get_approximate_hamiltonian = ADAPT.Hamiltonians.Max3SAT.get_approximate_h
 
         # Check approximate equality 
         @test isapprox(E1, E2, atol=1e-15)
+
+        # Check exact Hamiltonian (should NOT be symmetric)
+        exact_hamiltonian_terms = get_exact_hamiltonian(formula, n_vars)
+        E1_exact = ADAPT.evaluate(exact_hamiltonian_terms, psi)
+        E2_exact = ADAPT.evaluate(exact_hamiltonian_terms, psi_flipped)
+        
+        println("Exact H: E1 = $E1_exact, E2 = $E2_exact, Diff = $(abs(E1_exact - E2_exact))")
+        @test !isapprox(E1_exact, E2_exact, atol=1e-6)
     end
 end
