@@ -1,5 +1,6 @@
 import ..ADAPT
 import PauliOperators: ScaledPauliVector
+using Base.Threads
 
 #=
 
@@ -82,13 +83,13 @@ Note that the observable must be a `QAOAObservable`.
 
 """
 TetrisQAOAAnsatz(γ0, pool, observable) = TetrisQAOAAnsatz(
-    observable, 
+    observable,
     γ0,
     typeof(γ0)[],
     Vector{Int}(),
     eltype(pool)[],
     typeof(γ0)[],
-    Ref(true), 
+    Ref(true),
     Ref(false),
 )
 
@@ -185,7 +186,7 @@ function ADAPT.gradient!(
     =#
 
     L = nlayers(ansatz)
-    l = L 
+    l = L
 
     ψ = ADAPT.evolve_state(ansatz, reference)   # FULLY EVOLVED ANSATZ |ψ⟩
     λ = observable * ψ                          # CALCULATE |λ⟩ = H |ψ⟩
@@ -225,14 +226,14 @@ function ADAPT.adapt!(
     p_current = length(ansatz.parameters)
 
     adapted = invoke(ADAPT.adapt!, Tuple{
-        ADAPT.AbstractAnsatz,
-        ADAPT.Trace,
-        ADAPT.TETRIS_ADAPT.TETRISADAPT,
-        ADAPT.GeneratorList,
-        ADAPT.Observable,
-        ADAPT.QuantumState,
-        ADAPT.CallbackList,
-    }, ansatz, trace, adapt_type, pool, observable, reference, callbacks)
+            ADAPT.AbstractAnsatz,
+            ADAPT.Trace,
+            ADAPT.TETRIS_ADAPT.TETRISADAPT,
+            ADAPT.GeneratorList,
+            ADAPT.Observable,
+            ADAPT.QuantumState,
+            ADAPT.CallbackList,
+        }, ansatz, trace, adapt_type, pool, observable, reference, callbacks)
     adapted || return adapted   # STOP IF ADAPTATION IS TERMINATED
 
     # ADD A NEW LAYER
@@ -252,5 +253,22 @@ function ADAPT.calculate_score(
     state = ADAPT.evolve_state(ansatz, reference)
     ADAPT.evolve_state!(ansatz.observable, ansatz.γ0, state)
     return abs(ADAPT.Basics.MyPauliOperators.measure_commutator(
-            generator, observable, state))
+        generator, observable, state))
+end
+
+function ADAPT.calculate_scores(
+    ansatz::TetrisQAOAAnsatz,
+    adapt_type::ADAPT.TETRIS_ADAPT.TETRISADAPT,
+    pool::ADAPT.GeneratorList,
+    observable::AnyPauli,
+    reference::ADAPT.QuantumState,
+)
+    state = ADAPT.evolve_state(ansatz, reference)
+    ADAPT.evolve_state!(ansatz.observable, ansatz.γ0, state)
+    scores = Vector{Float64}(undef, length(pool))
+    @threads for i in eachindex(pool)
+        scores[i] = abs(ADAPT.Basics.MyPauliOperators.measure_commutator(
+            pool[i], observable, state))
+    end
+    return scores
 end
