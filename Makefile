@@ -25,12 +25,12 @@ test:
 install-kamis:
 	@echo "Installing KaMIS..."
 	@mkdir -p external
-	git clone https://github.com/pratimugale/KaMIS.git external/KaMIS
+	git clone https://github.com/KarlsruheMIS/KaMIS.git external/KaMIS
 	cd external/KaMIS && git submodule update --init --recursive
 	@echo "KaMIS repo cloned!"
 	@echo "To compile KaMIS, run: cd external/KaMIS && ./compile_withcmake.sh"
 	@echo "If using MacOS, you may need to edit the compile_withcmake.sh script to use the correct compiler. Please refer to external/KaMIS/HowToMacOs.md for instructions."
-	@echo "To clean KaMIS, run: rm -rf external/KaMIS"
+	@echo "To clean KaMIS, run: make clean-kamis"
 
 clean-kamis:
 	rm -rf external/KaMIS
