@@ -87,6 +87,7 @@ end
     include("max3sat_exact_hamiltonian.jl")
     include("max3sat_approx_hamiltonian.jl")
     include("max3sat_bit_flip_symmetry.jl")
+    include("check_pool_completeness.jl")
 
     @testset "Basics" begin
         ADAPT.validate(
