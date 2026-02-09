@@ -84,6 +84,11 @@ function build_operator_graph(pool, scores, gradient_threshold)
     n_nodes = length(valid_ops)
     println("Building graph with $n_nodes nodes (operators above threshold)")
     
+    # Early return if no operators pass threshold
+    if n_nodes == 0
+        return Dict(), Dict(), Vector{Int}[], String[], Int[]
+    end
+    
     # Build adjacency list: nodes are connected if their supports overlap. Different generator type (X_1 X_2) and (Y_1 Y_2) are connected as they have the same support, thus this is opeartor agnostic.
 
     # adj list is a list of lists, where the i-th list contains the indices of the nodes that are connected to the i-th node.
