@@ -26,6 +26,7 @@ function ADAPT.adapt!(
     callbacks::ADAPT.CallbackList,
 )
     # CALCULATE SCORES
+    println("Number of pool operators: $(length(pool))")
     scores = ADAPT.calculate_scores(ansatz, vanilla, pool, observable, reference)
 
     # CHECK FOR CONVERGENCE

@@ -120,7 +120,7 @@ ADAPT.calculate_score(
 ADAPT.calculate_scores(
     ansatz::ADAPT.AbstractAnsatz,
     adapt::ADAPT.TETRIS_ADAPT.TETRISADAPT,
-    pool::ADAPT.Basics.AnyPauli,
+    pool::ADAPT.GeneratorList,
     dspv::QAOAObservable,
     reference::ADAPT.QuantumState,
 ) = ADAPT.calculate_scores(ansatz, adapt, pool, dspv.spv, reference)

@@ -1,5 +1,6 @@
 import ..ADAPT
 import PauliOperators: ScaledPauliVector
+using Base.Threads
 
 #=
 
@@ -212,7 +213,8 @@ end
 ##########################################################################################
 
 #= Make compatible with TETRIS protocol. =#
-
+# This function does what we need to do with respect to QAOA for Tetris ADAPT. (handles addition of γ parameters)
+# The invoke call runs the tetris logic for the mixers ie the β parameters
 function ADAPT.adapt!(
     ansatz::TetrisQAOAAnsatz,
     trace::ADAPT.Trace,
@@ -222,7 +224,7 @@ function ADAPT.adapt!(
     reference::ADAPT.QuantumState,
     callbacks::ADAPT.CallbackList,
 )
-    p_current = length(ansatz.parameters)
+    p_current = length(ansatz.parameters) # ansatz.parameters is the list of β parameters
 
     adapted = invoke(ADAPT.adapt!, Tuple{
         ADAPT.AbstractAnsatz,
@@ -262,8 +264,6 @@ function ADAPT.calculate_scores(
     observable::AnyPauli,
     reference::ADAPT.QuantumState,
 )
-    using Base.Threads
-    
     # Compute state ONCE (shared across all operators)
     println("Evolving the state")
     # Evolve the state with the previously found ansatz and observable
