@@ -89,8 +89,7 @@ trace = ADAPT.Trace()
 
 # SELECT THE PROTOCOLS
 adapt_gradient_threshold = 1e-3
-adapt = ADAPT.TETRIS_ADAPT.TETRISADAPT(adapt_gradient_threshold) 
-# number argument in TETRISADAPT should be *preferably* equal to the ADAPT gradient threshold
+adapt = ADAPT.TETRIS_ADAPT.TETRISADAPT(adapt_gradient_threshold; use_kamis=true, kamis_seed=42) 
 vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
     #= NOTE: Add `iterations=10` to set max iterations per optimization loop. =#
 

@@ -38,3 +38,11 @@ clean-kamis:
 smoke-kamis:
 	@echo "Running KaMIS mmwis smoke test..."
 	$(JULIA) --project=. test/kamis_smoke_test.jl
+
+run-tetris-qaoa:
+	@echo "Running Tetris-QAOA..."
+	$(JULIA) --project=. test/tetris_qaoa.jl
+
+run-mosaic-qaoa:
+	@echo "Running MosaicADAPT-QAOA..."
+	$(JULIA) --project=. test/mosaicadapt_qaoa.jl

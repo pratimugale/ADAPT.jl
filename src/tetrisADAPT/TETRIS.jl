@@ -25,8 +25,8 @@ function TETRISADAPT(
     kamis_seed::Int = 42,
     percent_tail_ends_removed::Float64 = 0.0
 ) where F
-    if percent_tail_ends_removed < 0 || percent_tail_ends_removed > 1
-        throw(ArgumentError("percent_tail_ends_removed must be between 0 and 1 (inclusive)"))
+    if percent_tail_ends_removed < 0 || percent_tail_ends_removed > 100
+        throw(ArgumentError("percent_tail_ends_removed must be between 0 and 100 (inclusive)"))
     end
 
     # check if the mmwis binary exists
@@ -62,6 +62,7 @@ function ADAPT.adapt!(
     ε = eps(ADAPT.typeof_score(adapt_type))
     if all(score -> abs(score) < ε, scores)
         ADAPT.set_converged!(ansatz, true)
+        trace[:callback_flagged] = "AllGradientsHitMachineEpsilon"
         return false
     end
 
@@ -111,6 +112,8 @@ function ADAPT.adapt!(
     # DEFER TO CALLBACKS
     data = ADAPT.Data(
         :scores => scores,
+        :max_pool_gradient => maximum(abs.(scores)),
+        :sum_gradients => sum(abs.(selected_scores)),
         :selected_index => selected_indices,
         :selected_score => selected_scores,
         :selected_generator => selected_generators,
