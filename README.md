@@ -4,12 +4,14 @@ This library contains the implementation of the MosaicADAPT-QAOA algorithm intro
 
 ## Method
 
-At each layer of QAOA, MosaicADAPT-QAOA calculates the gradients of all mixer operators like ADAPT-QAOA. However, instead of selecting just one operator at each layer, it selects all disjoint mixer operators at a layer. MosaicADAPT-QAOA formulates disjoint operator selection as a maximum weight independent set problem on a specially constructed graph, where nodes represent mixer operators and edges connect operators with overlappting support. Then, MosaicADAPT-QAOA uses the [KaMIS MMWIS](https://github.com/KarlsruheMIS/KaMIS) solver to solve this problem.
+At each layer of QAOA, MosaicADAPT-QAOA calculates the gradients of all mixer operators like ADAPT-QAOA. However, instead of selecting just one operator at each layer, it selects all disjoint mixer operators at a layer. MosaicADAPT-QAOA formulates disjoint operator selection as a maximum weight independent set problem on an incompatibility graph, where nodes represent mixer operators and edges connect operators with overlappting support. Node weights are kept proportional to the corresponding operator gradients. Then, MosaicADAPT-QAOA uses the [KaMIS MMWIS](https://github.com/KarlsruheMIS/KaMIS) solver to solve this problem.
 
 Another method to select operators is using a greedy strategy (similar to [TETRIS-ADAPT-VQE](https://arxiv.org/abs/2209.10562)). We apply the same strategy to QAOA, and refer to this strategy as TETRIS-QAOA for comparison.
 
-![Operator selection strategies](assets/images/operator_selection_strategies.png)
-![Incompatibility graph](assets/images/incompatibility_graph.png)
+<p align="center">
+  <img src="assets/images/operator_selection_strategies.png" width="45%">
+  <img src="assets/images/incompatibility_graph.png" width="45%">
+</p>
 
 ## Installation
 
@@ -25,6 +27,9 @@ Another method to select operators is using a greedy strategy (similar to [TETRI
 To run the MosaicADAPT-QAOA, TETRIS-QAOA variants, use the following commands:
 1. TETRIS-QAOA (greedy selection): `make run-tetris-qaoa`
 2. MosaicADAPT-QAOA (MWIS-based selection): `make run-mosaic-qaoa`
+
+## Max-E3-SAT Hamiltonians
+To run the algorithm on Max-E3-SAT Hamiltonians, see the exact and approximate Max-E3-SAT Hamiltonians implemented [here](src/hamiltonians/max3sat.jl). Note that in our paper we use the exact hamiltonian to study the unapproximated optimization dynamics.
 
 ## Citation
 
