@@ -39,6 +39,29 @@ module Max3SAT
         Base.length(f::Formula) = length(f.clauses)
         Base.iterate(f::Formula, state...) = iterate(f.clauses, state...)
         Base.getindex(f::Formula, i::Int) = f.clauses[i]
+ 
+        """
+            get_formula_from_list(formula_list::Vector)
+        Create a Formula struct from a list of lists of integers (DIMACS-style literals).
+        Positive integer x -> x-th variable.
+        Negative integer -x -> NOT x-th variable.
+        """
+        function get_formula_from_list(formula_list::Vector)
+            clauses = Clause[]
+            for clause_data in formula_list
+                lits = Literal[]
+                for lit in clause_data
+                    var = abs(lit)
+                    neg = lit < 0
+                    push!(lits, Literal(var, neg))
+                end
+                if length(lits) != 3
+                    error("Max-3-SAT requires exactly 3 literals per clause. Found $(length(lits)).")
+                end
+                push!(clauses, Clause((lits[1], lits[2], lits[3])))
+            end
+            return Formula(clauses)
+        end
 
     end
 

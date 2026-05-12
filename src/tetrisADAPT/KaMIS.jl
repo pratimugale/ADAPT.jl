@@ -19,7 +19,7 @@ Returns:
 - node_names: Vector of node names (for debugging)
 - valid_indices: Vector of indices of operators in pool that passed the threshold
 """
-function build_operator_graph(pool::Vector{ScaledPauliVector}, scores::Vector{Float64}, gradient_threshold::Float64)::Tuple{Dict{Int, ScaledPauliVector}, Dict{Int, Float64}, Vector{Vector{Int}}, Vector{String}, Vector{Int}}
+function build_operator_graph(pool::AbstractVector, scores::Vector{Float64}, gradient_threshold::Float64)::Tuple{Dict{Int, ScaledPauliVector}, Dict{Int, Float64}, Vector{Vector{Int}}, Vector{String}, Vector{Int}}
     # Filter operators above threshold
     valid_ops = ScaledPauliVector[]
     valid_scores = Float64[]
@@ -35,7 +35,7 @@ function build_operator_graph(pool::Vector{ScaledPauliVector}, scores::Vector{Fl
     end
     
     n_nodes = length(valid_ops)
-    println("Building graph with $n_nodes nodes (operators above threshold)")
+    @info "Building graph with $n_nodes nodes (operators above threshold)"
     
     # Early return if no operators pass threshold
     if n_nodes == 0
@@ -144,7 +144,6 @@ end
 
 """
     run_kamis_mmwis(graph_file::String; 
-                    kamis_path::String="",
                     output_file::String="",
                     seed::Int=0,
                     time_limit::Float64=0.0,
@@ -161,7 +160,7 @@ function run_kamis_mmwis(graph_file::String;
                          config::String="mmwis")
     
     # Default KaMIS path
-    kamis_path = joinpath(pwd(), "TetrisADAPT.jl", "external", "KaMIS", "mmwis", "deploy", "mmwis")
+    kamis_path = joinpath(@__DIR__, "..", "..", "external", "KaMIS", "mmwis", "deploy", "mmwis")
     if !isfile(kamis_path)
         error("KaMIS mmwis executable not found at $kamis_path. Please build KaMIS using the README instructions.")
     end
@@ -185,12 +184,12 @@ function run_kamis_mmwis(graph_file::String;
         cmd = `$cmd --time_limit=$time_limit`
     end
     
-    println("Running KaMIS mmwis: $cmd")
+    @info "Running KaMIS mmwis: $cmd"
     
     # Run command - in Julia, run() throws an error if the process fails
     # So we just need to catch and re-throw with better error message
     try
-        run(cmd)
+        run(pipeline(cmd, stdout=devnull)) # For debugging KaMIS output, remove stdout=devnull
     catch e
         error("KaMIS mmwis failed: $e")
     end
@@ -263,8 +262,23 @@ function select_operators_with_kamis(pool, scores, gradient_threshold;
         build_operator_graph(pool, scores, gradient_threshold)
     
     if isempty(node_to_operator)
-        println("No operators above threshold, returning empty selection")
+        @warn "No operators above threshold, returning empty selection"
         return Int[], [], Float64[]
+    end
+    
+    # Handle single node case explicitly to avoid running KaMIS binary
+    if length(node_to_operator) == 1
+        # If there is only one operator, it is trivially an independent set
+        single_idx = first(keys(node_to_operator))
+        
+        @info "KaMIS selected 1 operators (single candidate)"
+        
+        # Map back to original pool indices
+        selected_pool_indices = [valid_indices[single_idx]]
+        selected_operators = [node_to_operator[single_idx]]
+        selected_scores = [node_to_score[single_idx]]
+        
+        return selected_pool_indices, selected_operators, selected_scores
     end
     
     # Prepare weights (scores)
@@ -313,7 +327,7 @@ function select_operators_with_kamis(pool, scores, gradient_threshold;
     write_metis_graph(adjacency_list, weight_ints, graph_file)
     
     # Run KaMIS mmwis
-    solution_file = run_kamis_mmwis(graph_file; kamis_path=kamis_path, seed=seed)
+    solution_file = run_kamis_mmwis(graph_file; seed=seed)
     
     # Parse solution
     selected_node_indices = parse_kamis_solution(solution_file; n_nodes=n_nodes)
@@ -374,7 +388,7 @@ function remove_tail_ends(selected_indices, selected_generators, selected_scores
     # we should keep the operator with highest gradient to have a mixer and keep the ansatz valid for QAOA
     if length(remove_set) >= length(selected_scores)
         max_idx = argmax(selected_scores)
-        println("  Tail-end removal: all operators would be removed in the given configuration, keeping highest gradient operator")
+        @warn "  Tail-end removal: all operators would be removed in the given configuration, keeping highest gradient operator"
         return [selected_indices[max_idx]], [selected_generators[max_idx]], [selected_scores[max_idx]], length(selected_scores) - 1
     end
 
@@ -387,7 +401,7 @@ function remove_tail_ends(selected_indices, selected_generators, selected_scores
     filtered_generators = selected_generators[keep_mask]
     filtered_scores = selected_scores[keep_mask]
 
-    println("  Tail-end removal: removed $num_removed operators (cumulative=$(round(cumulative, digits=6)), limit=$(round(limit, digits=6)), $(percent_tail_ends_removed)% of sum=$total_sum)")
+    @info "  Tail-end removal: removed $num_removed operators (cumulative=$(round(cumulative, digits=6)), limit=$(round(limit, digits=6)), $(percent_tail_ends_removed)% of sum=$total_sum)"
 
     return filtered_indices, filtered_generators, filtered_scores, num_removed
 end

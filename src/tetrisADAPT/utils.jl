@@ -54,7 +54,7 @@ function get_operator_name(op::ScaledPauliVector)
     support_str = join(sort(collect(op_support)), "")
     pauli_type = get_pauli_type(op)
     # Clean up pauli_type to be a valid identifier (remove spaces, special chars)
-    # TODO: The cleaned name can be formatted better. For now its fine as it is just for debugging.
+    # TODO: The cleaned name can be formatted better. For now its fine as it is used only for debugging.
     pauli_clean = replace(pauli_type, " " => "", "+" => "_", "-" => "m")
     return "$(support_str)_$(pauli_clean)"
 end
