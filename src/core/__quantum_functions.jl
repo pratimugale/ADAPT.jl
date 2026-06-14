@@ -2,6 +2,8 @@
     Names not defined in this file or in base Julia can be found there.
 =#
 
+import Random
+
 """
     evolve_state(
         ansatz::AbstractAnsatz,
@@ -353,3 +355,64 @@ function make_gradfunction!(
         ∇f
     )
 end
+
+
+"""
+    sample_from_state(state, n_samples=1024)
+Sample bitstrings from the final quantum state.
+
+Parameters:
+    state: A quantum state vector (can be real or complex numbers).
+    n_samples: The number of bitstrings to sample.
+
+Returns:
+    A BitMatrix with rows = qubits and columns = samples.
+
+"""
+function sample_from_state(state::AbstractVector{<:Number}, n_samples::Int=1024)::BitMatrix
+    probabilities = abs2.(state)
+    n_states = length(state)
+
+    if n_states < 2
+        error("Invalid quantum state: state vector must have at least 2 elements")
+    end
+
+    if !ispow2(n_states)
+        error("Invalid quantum state: length must be a power of 2, got $n_states")
+    end
+
+    n_qubits = Int(log2(n_states))
+    
+    # use the cumulative distribution function to sample the bitstrings
+    cdf = cumsum(probabilities)
+
+    # Ensure CDF ends at 1.0 (or close) for edge case handling
+    if cdf[end] < 1.0 - 1e-10
+        error("Probabilities don't sum to 1.0: sum=$(cdf[end])")
+    end
+
+    # 3. Pre-allocate BitMatrix: (Rows = Qubits, Cols = Samples)
+    # Julia is Column-Major, so we store each sample as a column.
+    bitstrings = BitMatrix(undef, n_qubits, n_samples)
+
+    for i in 1:n_samples
+        # Generate random number (uniformly sampled in [0, 1]) and find corresponding state
+        r = rand()
+        
+        # find the first index of the cumulative distribution function 
+        # that is greater than the uniformly sampled random number
+        # uses binary search to find the index, i.e. O(log(2^n_qubits)) time
+        selected_idx = searchsortedfirst(cdf, r)
+        # Handle edge case where r is >= cdf[end] due to floating point imprecision, 
+        #subtract 1 to get the correct index as Julia is 1-indexed
+        selected_idx = clamp(selected_idx, 1, n_states) - 1
+        
+        # Convert index to bitstring
+        for j in 1:n_qubits
+            @inbounds bitstrings[j, i] = (selected_idx >> (j-1)) & 1
+        end
+    end
+    
+    return bitstrings
+end
+

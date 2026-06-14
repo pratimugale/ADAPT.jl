@@ -33,29 +33,6 @@ function (tracer::ModalSampleTracer)(
     return false
 end
 
-
-"""
-    ClauseSatisfactionTracer()
-
-At each adaptation, identify the number of satisfied clauses and save it as an integer.
-
-"""
-struct ClauseSatisfactionTracer <: ADAPT.AbstractCallback end
-
-function (tracer::ClauseSatisfactionTracer)(
-    ::ADAPT.Data, ansatz::ADAPT.AbstractAnsatz, trace::ADAPT.Trace,
-    ::ADAPT.AdaptProtocol, ::ADAPT.GeneratorList,
-    ::ADAPT.Observable, ψ0::ADAPT.QuantumState,
-)
-    ψ = ADAPT.evolve_state(ansatz, ψ0)      # THE FINAL STATEVECTOR
-    
-    # INSERT CODE FOR CHECKING SATISFIED CLAUSES HERE
-    clauses = 
-
-    push!( get!(trace, :satisfiedclauses, Any[]), clauses )
-    return false
-end
-
 # DEFINE A GRAPH
 n = 6
 
@@ -112,8 +89,7 @@ trace = ADAPT.Trace()
 
 # SELECT THE PROTOCOLS
 adapt_gradient_threshold = 1e-3
-adapt = ADAPT.TETRIS_ADAPT.TETRISADAPT(adapt_gradient_threshold) 
-# number argument in TETRISADAPT should be *preferably* equal to the ADAPT gradient threshold
+adapt = ADAPT.TETRIS_ADAPT.TETRISADAPT(adapt_gradient_threshold; use_kamis=true, kamis_seed=42) 
 vqe = ADAPT.OptimOptimizer(:BFGS; g_tol=1e-6)
     #= NOTE: Add `iterations=10` to set max iterations per optimization loop. =#
 
@@ -122,7 +98,6 @@ callbacks = [
     ADAPT.Callbacks.Tracer(:energy, :selected_index, :selected_score, :scores, :callback_flagged),
     ADAPT.Callbacks.ParameterTracer(),
     ModalSampleTracer(),
-    ClauseSatisfactionTracer(),
     ADAPT.Callbacks.Printer(:energy, :selected_generator, :selected_score),
     ADAPT.Callbacks.ScoreStopper(adapt_gradient_threshold),
     # ADAPT.Callbacks.ParameterStopper(100),

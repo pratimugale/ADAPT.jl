@@ -27,6 +27,7 @@ function ADAPT.adapt!(
 )
     # CALCULATE SCORES
     scores = ADAPT.calculate_scores(ansatz, vanilla, pool, observable, reference)
+    max_gradient = maximum(abs.(scores))
 
     # CHECK FOR CONVERGENCE
     ε = eps(ADAPT.typeof_score(vanilla))
@@ -44,6 +45,7 @@ function ADAPT.adapt!(
     # DEFER TO CALLBACKS
     data = ADAPT.Data(
         :scores => scores,
+        :max_pool_gradient => max_gradient,
         :selected_index => selected_index,
         :selected_score => selected_score,
         :selected_generator => selected_generator,

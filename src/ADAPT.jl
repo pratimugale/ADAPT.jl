@@ -31,6 +31,7 @@ module ADAPT
     export evolve_state, evolve_state!
     export evaluate, partial, gradient, gradient!
     export make_costfunction, make_gradfunction, make_gradfunction!
+    export sample_from_state
 
     # Define functions for dense matrix representations.
     include("core/__matrix_functions.jl")
@@ -106,6 +107,8 @@ module ADAPT
     end
 
     module TETRIS_ADAPT
+    include("tetrisADAPT/utils.jl")
+    include("tetrisADAPT/KaMIS.jl")
         include("tetrisADAPT/TETRIS.jl")
         export TETRISADAPT
     end
@@ -139,6 +142,12 @@ module ADAPT
 
         # Methods to generate MaxCut Hamiltonians
         include("hamiltonians/maxcut.jl")
+
+        # Max-3-SAT Hamiltonians (types + exact/approx functions)
+        include("hamiltonians/max3sat.jl")
+        using .Max3SAT
+        export Max3SAT
+
         export MaxCut
     end
 end
